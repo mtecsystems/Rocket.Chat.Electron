@@ -19,12 +19,18 @@ const icons = {
 
     darwin: {
         dir: 'osx',
-        icon: 'icon-trayTemplate.png'
+        icon: 'icon-trayTemplate.png',
+        iconAlert: 'icon-tray-alert.png',
+        title: {
+            online: '\u001B[32m',
+            away: '\u001B[33m',
+            busy: '\u001B[31m',
+            offline: '\u001B[30m'
+        }
     }
 };
 
 const _iconTray = path.join(__dirname, 'images', icons[process.platform].dir, icons[process.platform].icon || 'icon-tray.png');
-const _iconTrayAlert = path.join(__dirname, 'images', icons[process.platform].dir, icons[process.platform].iconAlert || 'icon-tray-alert.png');
 
 function createAppTray () {
     const _tray = new Tray(_iconTray);
@@ -95,34 +101,42 @@ function createAppTray () {
     };
 }
 
-function setImage (title) {
+function getImageTitle (title, showAlert, count) {
     if (title === '•') {
-        title = "Dot";
-    } else if (!isNaN(parseInt(title)) && title > 9) {
-        title = "9Plus";
+        return "Dot";
+    } else if (showAlert && !isNaN(parseInt(title)) && title > 9) {
+        return "9Plus";
+    } else {
+        return count;
     }
-
-    const _iconPath = path.join(__dirname, 'images', icons[process.platform].dir, `icon-tray${title}.png`);
-    mainWindow.tray.setImage(_iconPath);
 }
 
-function showTrayAlert (showAlert, title) {
+function getTrayIcon (platform, showAlert, title) {
+    if (platform !== 'darwin') {
+        return path.join(__dirname, 'images', icons[process.platform].dir, `icon-tray${title}.png`);
+    }
+
+    if (showAlert) {
+        return path.join(__dirname, 'images', icons[process.platform].dir, icons[process.platform].iconAlert);
+    } else {
+        return path.join(__dirname, 'images', icons[process.platform].dir, icons[process.platform].icon);
+    }
+}
+
+function showTrayAlert (badge, status = 'online') {
     if (mainWindow.tray === null || mainWindow.tray === undefined) {
         return;
     }
 
-    mainWindow.flashFrame(showAlert);
-    if (process.platform !== 'darwin') {
-        setImage(title);
-    } else {
-        if (showAlert) {
-            mainWindow.tray.setImage(_iconTrayAlert);
-        } else {
-            mainWindow.tray.setImage(_iconTray);
-        }
-        mainWindow.tray.setTitle(title);
-    }
+    const imageTitle = getImageTitle(badge.title, badge.showAlert, badge.count);
 
+    mainWindow.flashFrame(badge.showAlert, imageTitle);
+    const trayImagePath = getTrayIcon(process.platform, badge.showAlert, imageTitle);
+    mainWindow.tray.setImage(trayImagePath);
+
+    if (process.platform === 'darwin') {
+        mainWindow.tray.setTitle(`${icons[process.platform].title[status]}${badge.title}`);
+    }
 }
 
 function removeAppTray () {
